@@ -1,0 +1,13 @@
+{
+  "name": "icode plugin marketplace",
+  "owner": {
+    "name": "icode team"
+  },
+  "plugins": [
+    {
+      "name": "icode",
+      "source": "./plugins/icode",
+      "description": "项目开发管理基本工具链"
+    }
+  ]
+}
