@@ -13,28 +13,63 @@
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM 模块中获取 __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
- * 动态导入模块（从执行位置解析）
- * 优先使用项目本地 node_modules，回退到全局安装
+ * 动态导入模块（从插件目录解析）
+ * 优先使用插件本地 node_modules，回退到全局安装
  */
 async function importModule(moduleName) {
+    // 尝试从插件目录查找 node_modules
+    const possiblePaths = [
+        // 插件目录下的 agents/mermaid-checker/node_modules
+        path.join(__dirname, '..', '..', 'node_modules'),
+        // skills/mermaid-checker/node_modules
+        path.join(__dirname, '..', '..', '..', 'skills', 'mermaid-checker', 'node_modules'),
+        // 从调用脚本所在目录向上查找
+        process.cwd(),
+    ];
+
+    for (const basePath of possiblePaths) {
+        const modulePath = path.join(basePath, 'node_modules', moduleName);
+        const pkgPath = path.join(modulePath, 'package.json');
+
+        if (fs.existsSync(pkgPath)) {
+            try {
+                // 尝试直接导入
+                return await import(moduleName);
+            } catch (e) {
+                // 读取 package.json 获取主入口
+                const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+                const entry = pkg.main || pkg.module || pkg.exports?.['.' ]?.import || 'index.js';
+                const entryPath = path.join(modulePath, entry);
+                if (fs.existsSync(entryPath)) {
+                    return await import(entryPath);
+                }
+            }
+        }
+    }
+
+    // 回退到全局模块
     try {
-        // 尝试直接导入（会从 process.cwd() 向上查找 node_modules）
         return await import(moduleName);
     } catch (e) {
-        // 回退到全局模块 - 读取主入口点
-        const globalNodePath = path.join(process.env.HOME, '.nvm', 'versions', 'node', process.version, 'lib', 'node_modules', moduleName);
+        // 尝试从 nvm 全局查找
+        const nvmPath = process.env.NVM_DIR || path.join(process.env.HOME, '.nvm');
+        const globalNodePath = path.join(nvmPath, 'versions', 'node', process.version, 'lib', 'node_modules', moduleName);
         const pkgPath = path.join(globalNodePath, 'package.json');
 
         if (fs.existsSync(pkgPath)) {
-            // 读取 package.json 获取主入口
             const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
             const entry = pkg.main || pkg.module || 'index.js';
             const entryPath = path.join(globalNodePath, entry);
             return await import(entryPath);
         }
-        throw new Error(`找不到模块: ${moduleName}\n  请在项目根目录运行: npm install mermaid jsdom\n  或全局安装: npm install -g mermaid jsdom`);
+        throw new Error(`找不到模块: ${moduleName}\n  请在项目目录运行: npm install\n  或全局安装: npm install -g ${moduleName}`);
     }
 }
 
