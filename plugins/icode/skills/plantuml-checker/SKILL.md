@@ -9,6 +9,20 @@ description: 编辑或创建 PlantUML 文件（.uml、.puml、.plantuml）时使
 
 在编写或修改图表文件后，必须立即验证 PlantUML 语法。这可以防止语法错误传播到文档、CI/CD 流水线或下游渲染流程中。
 
+## 依赖要求
+
+执行检查命令需要满足以下任一条件，用户才能成功运行检查：
+
+1. **Docker 方式（推荐）**：
+   - 用户能执行 `docker`（例如用户 id 或环境表明包含 docker）。
+   - 本机已有 `plantuml/plantuml` 镜像/容器。
+   - 命令：`docker run --rm -v $(pwd):/data plantuml/plantuml -check /data/diagram.puml`
+
+2. **本地 Jar 方式**：
+   - 已安装 Java，且当前路径或 PATH 下存在 `plantuml.jar`，能执行本地 PlantUML 进行 check。
+   - 命令：`java -jar plantuml.jar -check diagram.puml`
+   - 退出码与错误输出含义与 Docker 方式相同，参见下方「错误解读」。
+
 ## 何时使用
 
 ```mermaid
@@ -36,11 +50,11 @@ docker run --rm -v $(pwd):/data plantuml/plantuml -check /data/diagram.puml
 
 ## 快速参考
 
-| 场景 | 命令 |
-|------|------|
-| 单个文件 | `docker run --rm -v $(pwd):/data plantuml/plantuml -check /data/file.puml` |
-| 多个文件 | 遍历 `*.puml` 逐个检查 |
-| 不同目录 | 相应调整 `-v` 路径和 `/data/` 前缀 |
+| 场景 | Docker 命令 | 本地 Jar 命令 |
+|------|-------------|----------------|
+| 单个文件 | `docker run --rm -v $(pwd):/data plantuml/plantuml -check /data/file.puml` | `java -jar plantuml.jar -check file.puml` |
+| 多个文件 | 遍历 `*.puml` 逐个检查（同上，替换文件名） | 同上，替换文件名 |
+| 不同目录 | 调整 `-v` 挂载路径和 `/data/` 前缀 | 使用相对或绝对路径作为参数 |
 
 ## 错误解读
 
